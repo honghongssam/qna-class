@@ -28,7 +28,7 @@ export default function QuestionCard({ question, onClick }) {
             <div className="q-card-header">
                 <div className="q-card-author">
                     <i className="fa-solid fa-circle-user"></i>
-                    <span>{question.authorId}</span>
+                    <span>{question.authorName || question.authorId}</span>
                 </div>
                 <div className="q-card-date">{timeAgo}</div>
             </div>

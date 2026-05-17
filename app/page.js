@@ -162,7 +162,7 @@ export default function Home() {
                                         }}
                                         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                                     >
-                                        <i className="fa-solid fa-right-to-bracket"></i> 로그인하고 배움터 입장하기
+                                        <i className="fa-solid fa-right-to-bracket"></i> 로그인하기
                                     </button>
                                     
                                     <span 
