@@ -8,6 +8,7 @@ import QuestionCard from "@/components/QuestionCard";
 import WriteModal from "@/components/WriteModal";
 import DetailModal from "@/components/DetailModal";
 import AuthModal from "@/components/AuthModal";
+import AvatarModal from "@/components/AvatarModal";
 
 export default function Home() {
     // 1. 상태(States) 관리 정의
@@ -22,6 +23,7 @@ export default function Home() {
     const [isWriteOpen, setIsWriteOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false); // 통합 로그인/회원가입 모달 열림 상태 추가
+    const [isAvatarOpen, setIsAvatarOpen] = useState(false); // 아바타 모달 열림 상태 추가
     const [activeQuestionId, setActiveQuestionId] = useState(null);
     const [hasEntered, setHasEntered] = useState(false); // 웰컴 커버 입장 여부
     const [fadeWelcome, setFadeWelcome] = useState(false); // 페이드아웃 연출용
@@ -109,6 +111,21 @@ export default function Home() {
             // 실시간 리스너에 의해 자동으로 상세 정보가 갱신됩니다.
         } catch (error) {
             alert("답변 등록 중 오류가 발생했습니다: " + error.message);
+        }
+    };
+
+    // 아바타 선택 완료 시 호출될 핸들러
+    const handleAvatarSelect = async (photoURL) => {
+        try {
+            const auth = getAuthService();
+            const updatedUser = await auth.updateUserPhotoURL(photoURL);
+            if (updatedUser) {
+                setUser(updatedUser); // 변경된 유저 세션 상태 갱신
+                setIsAvatarOpen(false); // 아바타 모달 닫기
+            }
+        } catch (error) {
+            console.error("아바타 변경 에러:", error);
+            alert("아바타 변경 중 오류가 발생했습니다: " + error.message);
         }
     };
 
@@ -205,33 +222,59 @@ export default function Home() {
                   </div>
                   <div className="header-right">
                       {user ? (
-                          <div className="user-profile" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div 
+                              className="user-profile" 
+                              onClick={() => setIsAvatarOpen(true)}
+                              title="클릭하여 나만의 아바타 프로필 사진을 바꿔보세요! 🎨"
+                              style={{ 
+                                  display: "flex", 
+                                  alignItems: "center", 
+                                  gap: "10px", 
+                                  cursor: "pointer",
+                                  padding: "6px 14px",
+                                  borderRadius: "9999px",
+                                  backgroundColor: "#f1f5f9",
+                                  border: "1px solid var(--border-color)",
+                                  transition: "all 0.2s ease"
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#cbd5e1"}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                          >
                               {user.photoURL ? (
                                   <img 
                                       src={user.photoURL} 
                                       alt={user.displayName} 
-                                      style={{ width: "32px", height: "32px", borderRadius: "50%", border: "2px solid #fff", objectFit: "cover" }} 
+                                      style={{ width: "32px", height: "32px", borderRadius: "50%", border: "2px solid var(--primary-color)", objectFit: "cover" }} 
                                   />
                               ) : (
                                   <span className="user-status-dot"></span>
                               )}
-                              <span className="user-name">
+                              <span className="user-name" style={{ color: "var(--text-main)", fontSize: "0.875rem" }}>
                                   학생: <strong>{user.displayName}</strong>
                               </span>
                               <button 
-                                  onClick={handleLogout} 
+                                  onClick={(e) => {
+                                      e.stopPropagation(); // 아바타 모달 팝업 전이 방지
+                                      handleLogout();
+                                  }} 
                                   style={{
                                       padding: "4px 10px",
                                       background: "rgba(255,255,255,0.15)",
-                                      color: "#fff",
-                                      border: "1px solid rgba(255,255,255,0.3)",
+                                      color: "#64748b",
+                                      border: "1px solid rgba(0,0,0,0.1)",
                                       borderRadius: "6px",
                                       cursor: "pointer",
                                       fontSize: "12px",
                                       transition: "all 0.2s"
                                   }}
-                                  onMouseOver={(e) => e.target.style.background = "rgba(255,255,255,0.3)"}
-                                  onMouseOut={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
+                                  onMouseOver={(e) => {
+                                      e.target.style.background = "#ef4444";
+                                      e.target.style.color = "#fff";
+                                  }}
+                                  onMouseOut={(e) => {
+                                      e.target.style.background = "rgba(255,255,255,0.15)";
+                                      e.target.style.color = "#64748b";
+                                  }}
                               >
                                   <i className="fa-solid fa-right-from-bracket"></i> 로그아웃
                               </button>
@@ -335,6 +378,14 @@ export default function Home() {
             <AuthModal
                 isOpen={isAuthOpen}
                 onClose={() => setIsAuthOpen(false)}
+            />
+
+            {/* 나만의 아바타 꾸미기 모달 */}
+            <AvatarModal
+                isOpen={isAvatarOpen}
+                currentPhotoURL={user ? user.photoURL : ""}
+                onClose={() => setIsAvatarOpen(false)}
+                onSelect={handleAvatarSelect}
             />
         </div>
     );
