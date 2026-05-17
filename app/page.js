@@ -138,17 +138,68 @@ export default function Home() {
                             <p className="welcome-description">
                                 모르는 것은 물어보고,<br />아는 것은 알려주며 함께 성장해요!
                             </p>
-                            <button 
-                                className="welcome-enter-btn"
-                                onClick={() => {
-                                    setFadeWelcome(true);
-                                    setTimeout(() => {
-                                        setHasEntered(true);
-                                    }, 600); // 0.6초 뒤 돔에서 완전히 제거
-                                }}
-                            >
-                                <i className="fa-solid fa-arrow-right-to-bracket"></i> 배움터 입장하기
-                            </button>
+                            {user ? (
+                                /* 이미 로그인한 경우: 닉네임과 함께 입장 버튼 노출 */
+                                <button 
+                                    className="welcome-enter-btn"
+                                    onClick={() => {
+                                        setFadeWelcome(true);
+                                        setTimeout(() => {
+                                            setHasEntered(true);
+                                        }, 600); // 0.6초 뒤 돔에서 완전히 제거
+                                    }}
+                                >
+                                    <i className="fa-solid fa-arrow-right-to-bracket"></i> {user.displayName}님, 배움터 입장하기
+                                </button>
+                            ) : (
+                                /* 로그인을 안 한 경우: 구글 로그인 유도 및 비로그인 둘러보기 링크 제공 */
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+                                    <button 
+                                        className="welcome-enter-btn"
+                                        onClick={async () => {
+                                            try {
+                                                const auth = getAuthService();
+                                                const loggedInUser = await auth.loginWithGoogle();
+                                                if (loggedInUser) {
+                                                    // 로그인에 성공하면 자동으로 0.6초 뒤 부드럽게 배움터 입장 처리
+                                                    setFadeWelcome(true);
+                                                    setTimeout(() => {
+                                                        setHasEntered(true);
+                                                    }, 600);
+                                                }
+                                            } catch (error) {
+                                                console.error("랜딩 로그인 에러:", error);
+                                                alert("로그인 도중 오류가 발생했습니다. 파이어베이스 콘솔 설정을 확인해 주세요!");
+                                            }
+                                        }}
+                                        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                                    >
+                                        <i className="fa-brands fa-google"></i> 구글 로그인하고 입장하기
+                                    </button>
+                                    
+                                    <span 
+                                        style={{
+                                            marginTop: "16px",
+                                            color: "rgba(255, 255, 255, 0.75)",
+                                            fontSize: "13px",
+                                            textDecoration: "underline",
+                                            cursor: "pointer",
+                                            display: "inline-block",
+                                            transition: "color 0.2s"
+                                        }}
+                                        onMouseOver={(e) => e.target.style.color = "#fff"}
+                                        onMouseOut={(e) => e.target.style.color = "rgba(255, 255, 255, 0.75)"}
+                                        onClick={() => {
+                                            setFadeWelcome(true);
+                                            setTimeout(() => {
+                                                setHasEntered(true);
+                                            }, 600);
+                                        }}
+                                    >
+                                        로그인 없이 둘러볼래요
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
