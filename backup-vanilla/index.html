@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏫 우리반 질문 광장 - Study Board</title>
+    <!-- 구글 폰트 적용 (Outfit, Noto Sans KR) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome 아이콘 적용 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 커스텀 스타일시트 연결 -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK (Compat 버전 사용 - 로컬 file:// 실행 가능하도록 지원) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- 앱 헤더 영역 -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+            <h1>우리반 질문 광장 <span class="badge">Study Board</span></h1>
+        </div>
+        <div class="header-right">
+            <!-- 테스트 유저 정보 표시 -->
+            <div class="user-profile">
+                <span class="user-status-dot"></span>
+                <span class="user-name">학생: <strong id="current-user-display">user_01</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 (3단 구성) -->
+    <main class="app-container">
+        <!-- 1단 (왼쪽): 키워드 필터링 영역 -->
+        <aside class="sidebar left-sidebar" id="keywords-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-hashtag"></i> 키워드 태그</h2>
+            </div>
+            <div class="panel-content">
+                <button class="tag-btn active" id="btn-tag-all">
+                    <span class="tag-hash">#</span> 전체보기
+                </button>
+                <div class="tag-list" id="dynamic-tags">
+                    <!-- JavaScript로 동적 생성되는 태그들이 들어올 자리 -->
+                    <div class="tag-loading">태그 불러오는 중...</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2단 (가운데): 질문 게시판 메인 영역 -->
+        <section class="main-board" id="board-panel">
+            <div class="panel-header board-header">
+                <div class="board-title-area">
+                    <h2><i class="fa-solid fa-list-check"></i> 질문 게시판</h2>
+                    <span class="q-count" id="question-count">질문 0개</span>
+                </div>
+                <button class="btn btn-primary" id="btn-open-write-modal">
+                    <i class="fa-solid fa-pen"></i> 질문하기
+                </button>
+            </div>
+            
+            <div class="panel-content board-content" id="question-list">
+                <!-- JavaScript로 동적 생성되는 질문 카드들이 들어올 자리 -->
+                <div class="empty-state">
+                    <i class="fa-solid fa-comments"></i>
+                    <p>등록된 질문이 없습니다. 첫 번째 질문을 등록해 보세요!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3단 (오른쪽): 공지사항 영역 -->
+        <aside class="sidebar right-sidebar" id="announcements-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-bullhorn"></i> 공지사항</h2>
+            </div>
+            <div class="panel-content">
+                <div class="notice-card highlight">
+                    <div class="notice-meta">
+                        <span class="notice-badge">필독</span>
+                        <span class="notice-date">오늘</span>
+                    </div>
+                    <h3>서로 가르쳐주며 함께 성장해요!</h3>
+                    <p>모르는 문제는 언제든 물어보고, 아는 문제는 댓글로 친구에게 친절하게 설명해 주세요. 가르쳐주면서 나의 복습도 완벽해집니다!</p>
+                </div>
+
+                <div class="notice-card">
+                    <div class="notice-meta">
+                        <span class="notice-date">2026.05.17</span>
+                    </div>
+                    <h3>바르고 고운 말을 사용합시다</h3>
+                    <p>서로 존중하며 따뜻한 배움의 공간을 만들어요. 비방이나 장난 섞인 글은 삼가해 주세요.</p>
+                </div>
+
+                <div class="notice-card">
+                    <div class="notice-meta">
+                        <span class="notice-date">2026.05.15</span>
+                    </div>
+                    <h3>이번 주 수학 1단원 퀴즈 대비</h3>
+                    <p>수학 1단원 '수의 범위와 어림하기'에 대해 헷갈리는 문제는 여기에 질문 카드를 올려 친구들과 토론해 보세요.</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- 모달 1: 질문 작성 모달 -->
+    <div class="modal" id="write-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square"></i> 새로운 질문 올리기</h3>
+                <button class="btn-close" id="btn-close-write-modal">&times;</button>
+            </div>
+            <form id="write-form">
+                <div class="form-group">
+                    <label for="q-title">질문 제목</label>
+                    <input type="text" id="q-title" placeholder="무엇이 궁금한가요? 핵심 내용을 한 줄로 적어주세요." required maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="q-content">질문 내용</label>
+                    <textarea id="q-content" rows="6" placeholder="이해하기 어려운 문제나 개념을 자세히 적어주세요. 예) '수학 익힘책 14쪽 3번 문제 풀이 과정이 이해가 안 돼요 ㅜㅜ'" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="q-tags">키워드 태그 (쉼표로 구분)</label>
+                    <input type="text" id="q-tags" placeholder="예) 수학, 어림하기, 1단원 (최대 3개 권장)">
+                    <small class="form-help">쉼표(,)를 사용해서 여러 개의 태그를 넣을 수 있습니다.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-write">취소</button>
+                    <button type="submit" class="btn btn-primary">질문 등록하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 모달 2: 질문 상세 및 답변 작성 모달 -->
+    <div class="modal" id="detail-modal">
+        <div class="modal-content detail-modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-file-invoice"></i> 질문 상세보기</h3>
+                <button class="btn-close" id="btn-close-detail-modal">&times;</button>
+            </div>
+            <div class="modal-body" id="detail-modal-body">
+                <!-- JavaScript로 상세 내용 동적 렌더링 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 커스텀 앱 로직 스크립트 연결 -->
+    <script src="app.js"></script>
+</body>
+</html>
