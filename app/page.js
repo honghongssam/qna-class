@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getDbService, CURRENT_USER } from "@/lib/firebase";
+import { getDbService, getAuthService } from "@/lib/firebase";
 import SidebarLeft from "@/components/SidebarLeft";
 import SidebarRight from "@/components/SidebarRight";
 import QuestionCard from "@/components/QuestionCard";
@@ -13,6 +13,9 @@ export default function Home() {
     const [questions, setQuestions] = useState([]);
     const [tags, setTags] = useState([]);
     const [selectedTag, setSelectedTag] = useState("all");
+    
+    // 로그인된 사용자 정보 상태 관리
+    const [user, setUser] = useState(null);
     
     // 모달 및 인트로 상태 제어
     const [isWriteOpen, setIsWriteOpen] = useState(false);
@@ -45,11 +48,48 @@ export default function Home() {
         };
     }, []);
 
+    // 2-2. 실시간 구글 로그인 상태 감지 리스너 구독
+    useEffect(() => {
+        const auth = getAuthService();
+        const unsubscribe = auth.subscribeAuth((currentUser) => {
+            setUser(currentUser);
+        });
+        return () => {
+            if (typeof unsubscribe === "function") unsubscribe();
+        };
+    }, []);
+
+    // 구글 로그인 팝업 트리거
+    const handleLogin = async () => {
+        try {
+            const auth = getAuthService();
+            await auth.loginWithGoogle();
+        } catch (error) {
+            console.error("로그인 에러:", error);
+            alert("로그인 도중 오류가 발생했습니다.\n구글 파이어베이스 콘솔의 [Authentication -> Sign-in method]에서 구글 로그인이 정상적으로 켜져 있는지 확인해 주세요!");
+        }
+    };
+
+    // 로그아웃 트리거
+    const handleLogout = async () => {
+        try {
+            const auth = getAuthService();
+            await auth.logout();
+        } catch (error) {
+            console.error("로그아웃 에러:", error);
+            alert("로그아웃 도중 오류가 발생했습니다: " + error.message);
+        }
+    };
+
     // 3. 질문 및 답변 등록 기능 핸들러
     const handleQuestionSubmit = async (title, content, tags) => {
+        if (!user) {
+            alert("로그인이 필요합니다.");
+            return;
+        }
         try {
             const db = getDbService();
-            await db.addQuestion(title, content, tags);
+            await db.addQuestion(title, content, tags, user.email, user.displayName);
             setIsWriteOpen(false);
         } catch (error) {
             alert("질문 등록 중 오류가 발생했습니다: " + error.message);
@@ -58,9 +98,13 @@ export default function Home() {
 
     const handleCommentSubmit = async (commentContent) => {
         if (!activeQuestionId) return;
+        if (!user) {
+            alert("로그인이 필요합니다.");
+            return;
+        }
         try {
             const db = getDbService();
-            await db.addComment(activeQuestionId, commentContent);
+            await db.addComment(activeQuestionId, commentContent, user.email, user.displayName);
             // 실시간 리스너에 의해 자동으로 상세 정보가 갱신됩니다.
         } catch (error) {
             alert("답변 등록 중 오류가 발생했습니다: " + error.message);
@@ -118,17 +162,52 @@ export default function Home() {
                     </div>
                     <h1>
                         우리반 질문 광장 <span className="badge">Next.js App</span>
-                    </h1>
-                </div>
-                <div className="header-right">
-                    <div className="user-profile">
-                        <span className="user-status-dot"></span>
-                        <span className="user-name">
-                            학생: <strong>{CURRENT_USER.id}</strong>
-                        </span>
-                    </div>
-                </div>
-            </header>
+                      </h1>
+                  </div>
+                  <div className="header-right">
+                      {user ? (
+                          <div className="user-profile" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              {user.photoURL ? (
+                                  <img 
+                                      src={user.photoURL} 
+                                      alt={user.displayName} 
+                                      style={{ width: "32px", height: "32px", borderRadius: "50%", border: "2px solid #fff", objectFit: "cover" }} 
+                                  />
+                              ) : (
+                                  <span className="user-status-dot"></span>
+                              )}
+                              <span className="user-name">
+                                  학생: <strong>{user.displayName}</strong>
+                              </span>
+                              <button 
+                                  onClick={handleLogout} 
+                                  style={{
+                                      padding: "4px 10px",
+                                      background: "rgba(255,255,255,0.15)",
+                                      color: "#fff",
+                                      border: "1px solid rgba(255,255,255,0.3)",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontSize: "12px",
+                                      transition: "all 0.2s"
+                                  }}
+                                  onMouseOver={(e) => e.target.style.background = "rgba(255,255,255,0.3)"}
+                                  onMouseOut={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
+                              >
+                                  <i className="fa-solid fa-right-from-bracket"></i> 로그아웃
+                              </button>
+                          </div>
+                      ) : (
+                          <button 
+                              className="btn btn-primary" 
+                              onClick={handleLogin}
+                              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                          >
+                              <i className="fa-brands fa-google"></i> 구글 로그인
+                          </button>
+                      )}
+                  </div>
+              </header>
 
             {/* 3단 메인 그리드 */}
             <main className="app-container">
@@ -150,7 +229,13 @@ export default function Home() {
                         </div>
                         <button 
                             className="btn btn-primary"
-                            onClick={() => setIsWriteOpen(true)}
+                            onClick={() => {
+                                if (!user) {
+                                    alert("질문을 작성하려면 먼저 구글 로그인을 완료해 주세요! 🧑‍🎓");
+                                    return;
+                                }
+                                setIsWriteOpen(true);
+                            }}
                         >
                             <i className="fa-solid fa-pen"></i> 질문하기
                         </button>
@@ -197,7 +282,7 @@ export default function Home() {
             <DetailModal 
                 isOpen={isDetailOpen} 
                 question={activeQuestion} 
-                currentUser={CURRENT_USER}
+                currentUser={user}
                 onClose={() => {
                     setIsDetailOpen(false);
                     setActiveQuestionId(null);

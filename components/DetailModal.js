@@ -54,7 +54,7 @@ export default function DetailModal({ isOpen, question, onClose, onSubmitComment
                             <div className="detail-meta-row">
                                 <div className="q-card-author">
                                     <i className="fa-solid fa-circle-user"></i>
-                                    <span>질문자: <strong>{question.authorId}</strong></span>
+                                    <span>질문자: <strong>{question.authorName || question.authorId}</strong></span>
                                 </div>
                                 <div className="q-card-date">{timeAgo} 작성</div>
                             </div>
@@ -84,12 +84,13 @@ export default function DetailModal({ isOpen, question, onClose, onSubmitComment
                                 {question.comments && question.comments.length > 0 ? (
                                     question.comments.map((comment) => {
                                         const commentTime = formatTime(comment.createdAt);
-                                        const isMyComment = comment.authorId === currentUser.id ? "my-comment" : "";
+                                        // currentUser가 null일 때(로그아웃 상태)를 위한 안전한 널(Null) 체크 방어벽
+                                        const isMyComment = (currentUser && comment.authorId === currentUser.email) ? "my-comment" : "";
                                         return (
                                             <div key={comment.id} className={`comment-card ${isMyComment}`}>
                                                 <div className="comment-header">
                                                     <span className="comment-author">
-                                                        <i className="fa-solid fa-user-pen"></i> {comment.authorId}
+                                                        <i className="fa-solid fa-user-pen"></i> {comment.authorName || comment.authorId}
                                                     </span>
                                                     <span className="comment-date">{commentTime}</span>
                                                 </div>
@@ -107,20 +108,36 @@ export default function DetailModal({ isOpen, question, onClose, onSubmitComment
 
                             {/* 답변 작성 폼 */}
                             <div className="comment-form-container">
-                                <form className="comment-form" onSubmit={handleSubmit}>
-                                    <textarea
-                                        rows="3"
-                                        placeholder="답변을 작성하여 친구의 공부를 도와주세요! (친절하고 정중한 표현을 사용합시다.)"
-                                        required
-                                        value={commentContent}
-                                        onChange={(e) => setCommentContent(e.target.value)}
-                                    ></textarea>
-                                    <div className="comment-form-footer">
-                                        <button type="submit" className="btn btn-primary">
-                                            <i className="fa-regular fa-paper-plane"></i> 답변 등록
-                                        </button>
+                                {currentUser ? (
+                                    <form className="comment-form" onSubmit={handleSubmit}>
+                                        <textarea
+                                            rows="3"
+                                            placeholder="답변을 작성하여 친구의 공부를 도와주세요! (친절하고 정중한 표현을 사용합시다.)"
+                                            required
+                                            value={commentContent}
+                                            onChange={(e) => setCommentContent(e.target.value)}
+                                        ></textarea>
+                                        <div className="comment-form-footer">
+                                            <button type="submit" className="btn btn-primary">
+                                                <i className="fa-regular fa-paper-plane"></i> 답변 등록
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div style={{
+                                        padding: "20px",
+                                        textAlign: "center",
+                                        background: "rgba(0, 0, 0, 0.03)",
+                                        border: "1px dashed rgba(0, 0, 0, 0.15)",
+                                        borderRadius: "10px",
+                                        margin: "10px 0"
+                                    }}>
+                                        <i className="fa-solid fa-lock" style={{ marginRight: "8px", color: "#6c757d" }}></i>
+                                        <span style={{ color: "#6c757d", fontSize: "14px" }}>
+                                            답변을 작성하려면 먼저 우측 상단에서 **구글 로그인**을 완료해 주세요! 🧑‍🎓
+                                        </span>
                                     </div>
-                                </form>
+                                )}
                             </div>
                         </div>
                     </div>
