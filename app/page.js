@@ -7,6 +7,7 @@ import SidebarRight from "@/components/SidebarRight";
 import QuestionCard from "@/components/QuestionCard";
 import WriteModal from "@/components/WriteModal";
 import DetailModal from "@/components/DetailModal";
+import AuthModal from "@/components/AuthModal";
 
 export default function Home() {
     // 1. 상태(States) 관리 정의
@@ -20,6 +21,7 @@ export default function Home() {
     // 모달 및 인트로 상태 제어
     const [isWriteOpen, setIsWriteOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isAuthOpen, setIsAuthOpen] = useState(false); // 통합 로그인/회원가입 모달 열림 상태 추가
     const [activeQuestionId, setActiveQuestionId] = useState(null);
     const [hasEntered, setHasEntered] = useState(false); // 웰컴 커버 입장 여부
     const [fadeWelcome, setFadeWelcome] = useState(false); // 페이드아웃 연출용
@@ -53,28 +55,27 @@ export default function Home() {
         const auth = getAuthService();
         const unsubscribe = auth.subscribeAuth((currentUser) => {
             setUser(currentUser);
+            
+            // [UX 보완] 랜딩(인트로) 화면이 열려있는 상태에서 로그인이 감지되면 
+            // 0.6초 뒤에 인트로 화면을 자동으로 닫고 배움터로 안전하게 입장 처리합니다.
+            if (currentUser && !hasEntered) {
+                setFadeWelcome(true);
+                setTimeout(() => {
+                    setHasEntered(true);
+                }, 600);
+            }
         });
         return () => {
             if (typeof unsubscribe === "function") unsubscribe();
         };
-    }, []);
-
-    // 구글 로그인 팝업 트리거
-    const handleLogin = async () => {
-        try {
-            const auth = getAuthService();
-            await auth.loginWithGoogle();
-        } catch (error) {
-            console.error("로그인 에러:", error);
-            alert("로그인 도중 오류가 발생했습니다.\n구글 파이어베이스 콘솔의 [Authentication -> Sign-in method]에서 구글 로그인이 정상적으로 켜져 있는지 확인해 주세요!");
-        }
-    };
+    }, [hasEntered]);
 
     // 로그아웃 트리거
     const handleLogout = async () => {
         try {
             const auth = getAuthService();
             await auth.logout();
+            // 로그아웃 시 웰컴 화면은 다시 보이지 않고 게시판에 머무릅니다.
         } catch (error) {
             console.error("로그아웃 에러:", error);
             alert("로그아웃 도중 오류가 발생했습니다: " + error.message);
@@ -152,29 +153,16 @@ export default function Home() {
                                     <i className="fa-solid fa-arrow-right-to-bracket"></i> {user.displayName}님, 배움터 입장하기
                                 </button>
                             ) : (
-                                /* 로그인을 안 한 경우: 구글 로그인 유도 및 비로그인 둘러보기 링크 제공 */
+                                /* 로그인을 안 한 경우: 통합 로그인 창 유도 및 비로그인 둘러보기 링크 제공 */
                                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
                                     <button 
                                         className="welcome-enter-btn"
-                                        onClick={async () => {
-                                            try {
-                                                const auth = getAuthService();
-                                                const loggedInUser = await auth.loginWithGoogle();
-                                                if (loggedInUser) {
-                                                    // 로그인에 성공하면 자동으로 0.6초 뒤 부드럽게 배움터 입장 처리
-                                                    setFadeWelcome(true);
-                                                    setTimeout(() => {
-                                                        setHasEntered(true);
-                                                    }, 600);
-                                                }
-                                            } catch (error) {
-                                                console.error("랜딩 로그인 에러:", error);
-                                                alert("로그인 도중 오류가 발생했습니다. 파이어베이스 콘솔 설정을 확인해 주세요!");
-                                            }
+                                        onClick={() => {
+                                            setIsAuthOpen(true);
                                         }}
                                         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                                     >
-                                        <i className="fa-brands fa-google"></i> 구글 로그인하고 입장하기
+                                        <i className="fa-solid fa-right-to-bracket"></i> 로그인하고 배움터 입장하기
                                     </button>
                                     
                                     <span 
@@ -251,10 +239,12 @@ export default function Home() {
                       ) : (
                           <button 
                               className="btn btn-primary" 
-                              onClick={handleLogin}
+                              onClick={() => {
+                                  setIsAuthOpen(true);
+                              }}
                               style={{ display: "flex", alignItems: "center", gap: "6px" }}
                           >
-                              <i className="fa-brands fa-google"></i> 구글 로그인
+                              <i className="fa-solid fa-right-to-bracket"></i> 로그인 / 회원가입
                           </button>
                       )}
                   </div>
@@ -339,6 +329,12 @@ export default function Home() {
                     setActiveQuestionId(null);
                 }} 
                 onSubmitComment={handleCommentSubmit}
+            />
+
+            {/* 통합 로그인/회원가입 인증 모달 */}
+            <AuthModal
+                isOpen={isAuthOpen}
+                onClose={() => setIsAuthOpen(false)}
             />
         </div>
     );
